@@ -49,8 +49,12 @@ def validate_line(line: str) -> str:
     # Reject embedded newlines: the entry must be exactly one line.
     if "\n" in stripped or "\r" in stripped:
         raise ValueError("laugh line must be a single line")
-    # UTF-8 round-trip check.
-    stripped.encode("utf-8")
+    # UTF-8 check: raise a clear ValueError (not a raw
+    # UnicodeEncodeError) when the line cannot be encoded.
+    try:
+        stripped.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise ValueError(f"laugh line is not valid UTF-8: {exc}") from exc
     return stripped
 
 
@@ -67,10 +71,8 @@ def main() -> int:
         )
         return 1
 
-    # Final guard: never write leading/trailing whitespace.
-    if line != line.strip():
-        print("error: laugh line has leading/trailing whitespace", file=sys.stderr)
-        return 1
+    # validate_line() already returns the stripped line, so no
+    # leading/trailing whitespace can reach the writer below.
     output_path = resolve_output_path()
     output_dir = os.path.dirname(output_path)
     if output_dir:
